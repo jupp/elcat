@@ -39,7 +39,6 @@ func main() {
 		},
 		cli.StringSliceFlag{
 			Name:  "field, f",
-			Value: &cli.StringSlice{"@timestamp", "message"},
 			Usage: "fields to return",
 		},
 		cli.StringSliceFlag{
@@ -47,8 +46,8 @@ func main() {
 			Usage: "dates to return",
 		},
 		cli.StringSliceFlag{
-			Name:  "term, t",
-			Usage: "define term query, example: FIELD:TERM",
+			Name:  "match, m",
+			Usage: "define match query, example: FIELD:QUERY",
 		},
 	}
 
@@ -56,6 +55,11 @@ func main() {
 		client, err := elastic.NewSimpleClient(elastic.SetURL(url))
 		if err != nil {
 			panic(err)
+		}
+
+		fields := c.StringSlice("field")
+		if fields == nil || len(fields) == 0 {
+			fields = []string{"@timestamp", "message"}
 		}
 
 		dates := c.StringSlice("date")
@@ -68,9 +72,7 @@ func main() {
 			indices[i] = prefix + date
 		}
 
-		fields := c.StringSlice("field")
-
-		queriesArray := c.StringSlice("term")
+		queriesArray := c.StringSlice("match")
 		globalQuery := elastic.NewBoolQuery()
 		for _, queryString := range queriesArray {
 			queryStringArray := strings.Split(queryString, ":")
