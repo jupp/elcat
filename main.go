@@ -10,7 +10,7 @@ import (
 	"gopkg.in/olivere/elastic.v3"
 )
 
-const defaultQuerySize = 10000
+const defaultQuerySize = 5000
 
 func main() {
 	app := cli.NewApp()
@@ -48,6 +48,11 @@ func main() {
 		cli.StringSliceFlag{
 			Name:  "match, m",
 			Usage: "define match query, example: FIELD:QUERY",
+		},
+		cli.IntFlag{
+			Name:  "query-size, z",
+			Value: defaultQuerySize,
+			Usage: "set query size",
 		},
 	}
 
