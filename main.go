@@ -10,7 +10,7 @@ import (
 	"gopkg.in/olivere/elastic.v3"
 )
 
-const defaultQuerySize = 100000
+const defaultQuerySize = 10000
 
 func main() {
 	app := cli.NewApp()
