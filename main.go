@@ -87,22 +87,22 @@ func main() {
 		}
 
 		from := 0
-		for processPortion(client, indices, globalQuery, fields, c.String("separator"), from) {
-			from += defaultQuerySize
+		for processPortion(client, indices, globalQuery, fields, c, from) {
+			from += c.Int("query-size")
 		}
 	}
 
 	app.Run(os.Args)
 }
 
-func processPortion(client *elastic.Client, indices []string, globalQuery *elastic.BoolQuery, fields []string, separator string, from int) bool {
+func processPortion(client *elastic.Client, indices []string, globalQuery *elastic.BoolQuery, fields []string, cliContext *cli.Context, from int) bool {
 	searchResult, err := client.Search(indices...).
 		Query(globalQuery).
 		Sort("@timestamp", true).
 		Sort("offset", true).
 		Fields(fields...).
 		From(from).
-		Size(defaultQuerySize).
+		Size(cliContext.Int("query-size")).
 		Do()
 
 	if err != nil {
@@ -118,7 +118,7 @@ func processPortion(client *elastic.Client, indices []string, globalQuery *elast
 				for _, fieldValue := range hit.Fields[field].([]interface{}) {
 					fmt.Print(fieldValue)
 				}
-				fmt.Print(separator)
+				fmt.Print(cliContext.String("separator"))
 			}
 			fmt.Print("\n")
 		}
