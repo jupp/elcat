@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/codegangsta/cli"
 	"gopkg.in/olivere/elastic.v3"
 )
+
+const defaultQuerySize = 1000
 
 func main() {
 	app := cli.NewApp()
@@ -43,6 +46,10 @@ func main() {
 			Name:  "date, d",
 			Usage: "dates to return",
 		},
+		cli.StringSliceFlag{
+			Name:  "term, t",
+			Usage: "define term query, example: FIELD:TERM",
+		},
 	}
 
 	app.Action = func(c *cli.Context) {
@@ -53,7 +60,7 @@ func main() {
 
 		dates := c.StringSlice("date")
 		if dates == nil || len(dates) == 0 {
-			dates = []string{currentDate()}
+			dates = []string{yesterdayDate(), currentDate()}
 		}
 
 		indices := make([]string, len(dates))
@@ -63,33 +70,61 @@ func main() {
 
 		fields := c.StringSlice("field")
 
-		searchResult, err := client.Search().
-			Index(indices...).
-			Sort("@timestamp", false).
-			Sort("offset", false).
-			Fields(fields...).
-			From(0).
-			Size(10).
-			Do()
-
-		if err != nil {
-			panic(err)
+		queriesArray := c.StringSlice("term")
+		globalQuery := elastic.NewBoolQuery()
+		for _, queryString := range queriesArray {
+			queryStringArray := strings.Split(queryString, ":")
+			field, value := queryStringArray[0], queryStringArray[1]
+			query := elastic.NewMatchPhraseQuery(field, value)
+			globalQuery.Must(query)
 		}
 
-		if searchResult.Hits != nil {
-			for _, hit := range searchResult.Hits.Hits {
-				for _, field := range fields {
-					fmt.Print(hit.Fields[field].(string))
-					fmt.Print(c.String("separator"))
-				}
-				fmt.Print("\n")
-			}
+		from := 0
+		for processPortion(client, indices, globalQuery, fields, c.String("separator"), from) {
+			from += defaultQuerySize
 		}
 	}
 
 	app.Run(os.Args)
 }
 
+func processPortion(client *elastic.Client, indices []string, globalQuery *elastic.BoolQuery, fields []string, separator string, from int) bool {
+	searchResult, err := client.Search(indices...).
+		Query(globalQuery).
+		Sort("@timestamp", true).
+		Sort("offset", true).
+		Fields(fields...).
+		From(from).
+		Size(defaultQuerySize).
+		Do()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if searchResult.Hits != nil {
+		if int64(from) > searchResult.TotalHits() {
+			return false
+		}
+		for _, hit := range searchResult.Hits.Hits {
+			for _, field := range fields {
+				for _, fieldValue := range hit.Fields[field].([]interface{}) {
+					fmt.Print(fieldValue)
+				}
+				fmt.Print(separator)
+			}
+			fmt.Print("\n")
+		}
+		return true
+	}
+
+	return false
+}
+
 func currentDate() string {
 	return time.Now().Format("2006.01.02")
+}
+
+func yesterdayDate() string {
+	return time.Now().AddDate(0, 0, -1).Format("2006.01.02")
 }
