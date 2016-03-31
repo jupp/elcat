@@ -14,8 +14,8 @@ const defaultQuerySize = 100000
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "eless"
-	app.Usage = "cli for elasticsearch"
+	app.Name = "elcat"
+	app.Usage = "cat like utility for elasticsearch with logstash data"
 
 	var url string
 	var prefix string
